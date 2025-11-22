@@ -1,0 +1,55 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// === PRODUCTOS ===
+model Product {
+  id           Int      @id @default(autoincrement())
+  nombre       String   @unique
+  categoria    String
+  subcategoria String?
+  precio       Float
+  imagen       String   @default("/no-image.png")
+  descripcion  String?
+  oferta       Boolean  @default(false)
+  nuevo        Boolean  @default(false)
+  mas_vendido  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+}
+
+// === PEDIDOS ===
+model Pedido {
+  id         Int         @id @default(autoincrement())
+  numero     String      @unique
+  fecha      DateTime
+  cliente    Json
+  productos  Json
+  total      Float
+  estado     String      @default("RECIBIDO")
+  notas      String?
+  canal      String      @default("WEB")
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  // ← RELACIÓN CON AUDITORÍA
+  auditoria  Auditoria[]
+}
+
+// === AUDITORÍA (NUEVA TABLA) ===
+model Auditoria {
+  id        Int      @id @default(autoincrement())
+  pedidoId  Int
+  pedido    Pedido   @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  usuario   String   // Quién hizo el cambio (ej: "Juan Pérez")
+  accion    String   // Ej: "CAMBIO ESTADO"
+  detalle   String   // Ej: "RECIBIDO → PREPARANDO"
+  fecha     DateTime @default(now())
+
+  @@index([pedidoId])
+}

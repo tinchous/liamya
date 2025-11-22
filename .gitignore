@@ -1,0 +1,9 @@
+node_modules/
+*.zip
+*.xlsx
+*.csv
+__pycache__/
+*.pyc
+products_data.json
+users_data.json
+
