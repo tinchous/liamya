@@ -8,6 +8,9 @@ import Delivery from './pages/Delivery'
 import Contacto from './pages/Contacto'
 import Categorias from './pages/Categorias'
 import AdminPanel from './pages/AdminPanel'
+import Login from './pages/Login'
+import Register from './pages/Register'
+import Dashboard from './pages/Dashboard'
 import Footer from './components/Footer'
 import FloatingCart from './components/FloatingCart'   // ← NUEVO
 
@@ -22,6 +25,9 @@ export default function App() {
         <Route path="/delivery" element={<Delivery />} />
         <Route path="/categorias" element={<Categorias />} />
         <Route path="/contacto" element={<Contacto />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/admin/*" element={<AdminPanel />} />
         <Route path="*" element={<Home />} />
       </Routes>
