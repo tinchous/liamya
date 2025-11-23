@@ -1,28 +1,22 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter } from 'react-router-dom'
 import { CartProvider } from './context/CartContext'
-import Home from './pages/index.jsx'
-import Productos from './pages/productos.jsx'
-import Nosotros from './pages/nosotros.jsx'
-import Contacto from './pages/contacto.jsx'
-import Delivery from './pages/delivery.jsx'
-import AdminPanel from './pages/admin/index.jsx'
+import App from './App.jsx'
 import './index.css'
+
+// Silenciamos los warnings de futuro de React Router (no rompen nada)
+const consoleWarn = console.warn
+console.warn = (...args) => {
+  if (typeof args[0] === 'string' && args[0].includes('Future Flag Warning')) return
+  consoleWarn(...args)
+}
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <CartProvider>
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/productos" element={<Productos />} />
-          <Route path="/nosotros" element={<Nosotros />} />
-          <Route path="/contacto" element={<Contacto />} />
-          <Route path="/delivery" element={<Delivery />} />
-          <Route path="/admin" element={<AdminPanel />} />
-          <Route path="*" element={<Home />} />
-        </Routes>
+        <App />
       </BrowserRouter>
     </CartProvider>
   </React.StrictMode>

@@ -2,9 +2,37 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  margin: 0;
-  font-family: 'Arial', sans-serif;
-  background: black;
-  color: white;
+/* NEÓN QUE QUEMA LA RETINA */
+@keyframes neonPulse {
+  0%, 100% { text-shadow: 0 0 20px #ff4500, 0 0 40px #ff0080, 0 0 60px #ff0080; }
+  50% { text-shadow: 0 0 40px #ff4500, 0 0 80px #ff0080, 0 0 120px #ff0080; }
+}
+.neon-text { animation: neonPulse 1.5s infinite; }
+
+/* RESPONSIVE TOTAL */
+@layer components {
+  .header-title {
+    @apply text-4xl md:text-6xl lg:text-8xl font-black text-orange-500 neon-text;
+  }
+  .menu-item {
+    @apply text-lg md:text-2xl lg:text-4xl font-black hover:text-orange-500 transition;
+  }
+  .btn-gigante {
+    @apply text-3xl md:text-5xl lg:text-7xl font-black py-8 px-12 rounded-3xl;
+  }
+}
+
+/* CARRITO Y WHATSAPP FIJOS EN CELULAR */
+#floating-cart, .whatsapp-float {
+  @apply w-16 h-16 md:w-20 md:h-20 bottom-4 right-4 md:bottom-8 md:right-8;
+}
+
+/* HEADER RESPONSIVE */
+header {
+  @apply px-4 md:px-8;
+}
+
+/* GRID RESPONSIVE EN PRODUCTOS Y CATEGORÍAS */
+.grid-responsive {
+  @apply grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 md:gap-8;
 }

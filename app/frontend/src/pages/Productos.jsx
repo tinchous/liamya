@@ -1,395 +1,85 @@
-import { useEffect, useState } from "react";
-import { useCart } from "../context/CartContext";
-import Cart from "../components/Cart";
+import React from 'react'
+import { Plus } from 'lucide-react'
+import { useCart } from '../context/CartContext'
+import confetti from 'canvas-confetti'
+
+const productos = [
+  { id: 1, name: "Zillertal 1L", price: 380, cat: "Cervezas" },
+  { id: 2, name: "Patricia 1L", price: 320, cat: "Cervezas" },
+  { id: 3, name: "Coca Cola 2.25L", price: 380, cat: "Gaseosas" },
+  { id: 4, name: "Fanta 2.25L", price: 360, cat: "Gaseosas" },
+  { id: 5, name: "Hamburguesa Completa", price: 450, cat: "Rotisería" },
+  { id: 6, name: "Chivito Canadiense", price: 750, cat: "Rotisería" },
+  { id: 7, name: "Pizza Muzzarella Grande", price: 890, cat: "Rotisería" },
+  { id: 8, name: "Papas Cheddar Bacon", price: 680, cat: "Rotisería" },
+  { id: 9, name: "Fernet Branca 750ml", price: 1850, cat: "Bebidas" },
+  { id: 10, name: "Smirnoff 1L", price: 1490, cat: "Bebidas" },
+]
 
 export default function Productos() {
-  // --- ESTADOS PRINCIPALES ---
-  const [productos, setProductos] = useState([]);
-  const [filtroCategoria, setFiltroCategoria] = useState("TODOS");
-  const [busqueda, setBusqueda] = useState("");
-  const [orden, setOrden] = useState("AZ");
-  const { cart, agregar, quitar, vaciar } = useCart();
-  const [mostrarForm, setMostrarForm] = useState(false);
+  const { setCart } = useCart()
 
-  // --- DATOS DEL CLIENTE ---
-  const [cliente, setCliente] = useState({
-    nombre: "",
-    telefono: "",
-    email: "",
-    direccion: "",
-    metodoPago: "EFECTIVO",
-    notas: "",
-    guardar_datos: false,   // Guarda sus datos
-    suscrito_promos: false, // Recibir promociones
-  });
-
-  // =====================================================
-  // Cargar productos desde el backend
-  // =====================================================
-  useEffect(() => {
-    fetch("http://127.0.0.1:5000/api/products")
-      .then((res) => res.json())
-      .then((data) => setProductos(data))
-      .catch((err) => console.error("Error cargando productos:", err));
-  }, []);
-
-  // =====================================================
-  // Obtener cantidad actual en carrito
-  // =====================================================
-  const obtenerCantidad = (nombre) => {
-    const item = cart.find((p) => p.nombre === nombre);
-    return item ? item.quantity : 0;
-  };
-
-  // =====================================================
-  // Categorías disponibles
-  // =====================================================
-  const categorias = [
-    "TODOS",
-    "FRUTAS/VERDURAS",
-    "ROTISERIA",
-    "BEBIDAS ALCOHOLICAS",
-    "BEBIDAS SIN ALCOHOL",
-    "TABACO",
-    "ALMACEN",
-    "PANADERIA",
-    "SNACKS/DULCES",
-    "FIAMBRERIA",
-    "MASCOTAS",
-    "LACTEOS",
-    "OTROS",
-  ];
-
-  // =====================================================
-  // Filtros y ordenamiento
-  // =====================================================
-  const productosFiltrados = productos
-    .filter((p) =>
-      filtroCategoria === "TODOS"
-        ? true
-        : p.categoria?.toUpperCase() === filtroCategoria.toUpperCase()
-    )
-    .filter((p) =>
-      p.nombre?.toLowerCase().includes(busqueda.toLowerCase())
-    );
-
-  const productosOrdenados = [...productosFiltrados].sort((a, b) => {
-    switch (orden) {
-      case "AZ":
-        return a.nombre.localeCompare(b.nombre);
-      case "ZA":
-        return b.nombre.localeCompare(a.nombre);
-      case "MENOR":
-        return a.precio - b.precio;
-      case "MAYOR":
-        return b.precio - a.precio;
-      case "DESTACADOS":
-        return a.mas_vendido === "si" ? -1 : 1;
-      default:
-        return 0;
-    }
-  });
-
-  // =====================================================
-  // Enviar pedido: guarda en backend + abre WhatsApp
-  // =====================================================
-  const enviarPedido = async (e) => {
-    e.preventDefault();
-
-    // Validar campos básicos
-    const campos = ["nombre", "telefono", "email", "direccion"];
-    for (const campo of campos) {
-      if (!cliente[campo] || cliente[campo].trim() === "") {
-        alert(`Por favor completa el campo: ${campo.toUpperCase()}`);
-        return;
+  const addToCart = (producto) => {
+    setCart(prev => {
+      const existe = prev.find(p => p.id === producto.id)
+      if (existe) {
+        return prev.map(p => p.id === producto.id ? { ...p, quantity: p.quantity + 1 } : p)
       }
-    }
+      return [...prev, { ...producto, quantity: 1 }]
+    })
 
-    if (cart.length === 0) {
-      alert("Tu carrito está vacío.");
-      return;
-    }
+    // EFECTO FLY HACIA EL CARRITO
+    const button = event.currentTarget
+    const cartIcon = document.querySelector('#floating-cart')
+    const flying = button.querySelector('.fly-icon').cloneNode(true)
+    flying.style.position = 'fixed'
+    flying.style.zIndex = '9999'
+    flying.style.transition = 'all 1s cubic-bezier(0.25, 0.8, 0.25, 1)'
+    const rect = button.getBoundingClientRect()
+    flying.style.left = rect.left + rect.width / 2 - 30 + 'px'
+    flying.style.top = rect.top + 'px'
+    document.body.appendChild(flying)
 
-    // Cálculos
-    const numeroPedido = "ORD-" + Date.now();
-    const total = cart.reduce((sum, i) => sum + i.precio * i.quantity, 0);
-    const deliveryCost = total < 1500 ? 50 : 0;
-    const totalConEnvio = total + deliveryCost;
+    setTimeout(() => {
+      const cartRect = cartIcon.getBoundingClientRect()
+      flying.style.left = cartRect.left + 40 + 'px'
+      flying.style.top = cartRect.top + 40 + 'px'
+      flying.style.transform = 'scale(0.3) rotate(360deg)'
+    }, 100)
 
-    try {
-      // --- Guardar pedido en backend ---
-      const response = await fetch("http://127.0.0.1:5000/api/pedidos", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cliente,
-          productos: cart,
-          total: totalConEnvio,
-          guardar_datos: cliente.guardar_datos || false,
-          suscrito_promos: cliente.suscrito_promos || false,
-        }),
-      });
+    setTimeout(() => {
+      document.body.removeChild(flying)
+      confetti({ particleCount: 80, spread: 70, origin: { x: 1, y: 1 } })
+    }, 1100)
+  }
 
-      const result = await response.json();
-
-      if (result.status === "success") {
-        // --- Crear mensaje para WhatsApp ---
-        const detalle = cart
-          .map(
-            (i) =>
-              `☐ ${i.quantity}x ${i.nombre} - $${i.precio} c/u = *$${(
-                i.precio * i.quantity
-              ).toFixed(2)}*`
-          )
-          .join("\n");
-
-        const mensaje = `*PEDIDO WEB N° ${result.numero}*\n═══════════════════════════════\n\n` +
-          `*CLIENTE*\n• Nombre: ${cliente.nombre}\n• Teléfono: ${cliente.telefono}\n• Email: ${cliente.email}\n\n` +
-          `*ENTREGA*\n${cliente.direccion}\n\n` +
-          `*DETALLE DEL PEDIDO*\n${detalle}\n\n` +
-          `*PAGO*\n• Subtotal: $${total.toFixed(2)}\n• Delivery: $${deliveryCost}\n• *TOTAL: $${totalConEnvio.toFixed(2)}*\n\n` +
-          `• Método: *${cliente.metodoPago}*\n` +
-          (cliente.notas ? `\n*NOTAS:*\n${cliente.notas}\n` : "") +
-          `\n────────────────\nAutoservice Liam Yahir\n${new Date().toLocaleString()}`;
-
-        // --- Abrir WhatsApp ---
-        const telefonoDestino = "59892308828";
-        const url = `https://wa.me/${telefonoDestino}?text=${encodeURIComponent(mensaje)}`;
-        window.open(url, "_blank");
-
-        alert("✅ Pedido enviado y guardado correctamente!");
-        vaciar();
-        setMostrarForm(false);
-      } else {
-        alert("❌ No se pudo guardar el pedido. Intenta de nuevo.");
-      }
-    } catch (err) {
-      console.error("Error enviando pedido:", err);
-      alert("❌ Error de conexión con el servidor.");
-    }
-  };
-
-  // =====================================================
-  // Render principal
-  // =====================================================
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black text-white pt-24 pb-32 px-6">
-      <h1 className="text-4xl font-display text-neonOrange text-center drop-shadow-[0_0_20px_#ff8c00] mb-10">
-        Productos
-      </h1>
-
-      {/* --- BÚSQUEDA Y ORDEN --- */}
-      <div className="flex flex-wrap justify-center gap-4 mb-8">
-        <input
-          type="text"
-          placeholder="🔍 Buscar producto..."
-          className="px-4 py-2 rounded-lg bg-black/70 border border-neonOrange text-white w-64"
-          value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
-        />
-        <select
-          value={orden}
-          onChange={(e) => setOrden(e.target.value)}
-          className="px-3 py-2 rounded-lg bg-black/70 border border-neonOrange text-white"
-        >
-          <option value="AZ">A - Z</option>
-          <option value="ZA">Z - A</option>
-          <option value="MENOR">Menor precio</option>
-          <option value="MAYOR">Mayor precio</option>
-          <option value="DESTACADOS">Destacados</option>
-        </select>
-      </div>
-
-      {/* --- CATEGORÍAS --- */}
-      <div className="flex flex-wrap justify-center gap-2 mb-10">
-        {categorias.map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setFiltroCategoria(cat)}
-            className={`px-3 py-2 rounded-lg font-bold transition ${
-              filtroCategoria === cat
-                ? "bg-neonOrange text-black"
-                : cat === "ROTISERIA"
-                ? "bg-red-600 hover:bg-red-500"
-                : cat === "FRUTAS/VERDURAS"
-                ? "bg-green-600 hover:bg-green-500"
-                : "bg-gray-800 hover:bg-gray-700"
-            }`}
-          >
-            {cat}
-          </button>
-        ))}
-      </div>
-
-      {/* --- PRODUCTOS --- */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-        {productosOrdenados.map((p) => (
-          <div
-            key={p.nombre}
-            className="bg-black/70 border-2 border-neonOrange rounded-2xl p-4 flex flex-col items-center shadow-[0_0_20px_#ff8c00] hover:scale-[1.03] transition min-h-[360px] relative"
-          >
-            {/* Etiquetas */}
-            <div className="absolute top-2 left-2 flex gap-1">
-              {p.nuevo === "si" && (
-                <span className="bg-blue-600 text-xs px-2 py-1 rounded text-white font-bold">
-                  NUEVO
-                </span>
-              )}
-              {p.oferta === "si" && (
-                <span className="bg-yellow-500 text-xs px-2 py-1 rounded text-black font-bold">
-                  OFERTA
-                </span>
-              )}
-              {p.mas_vendido === "si" && (
-                <span className="bg-red-600 text-xs px-2 py-1 rounded text-white font-bold">
-                  DESTACADO
-                </span>
-              )}
+    <div className="pt-56 pb-32 px-8">
+      <div className="max-w-7xl mx-auto">
+        <h1 className="text-5xl md:text-7xl lg:text-9xl font-black text-orange-500 text-center mb-16 animate-pulse">
+          PRODUCTOS
+        </h1>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-8">
+          {productos.map(p => (
+            <div key={p.id} className="bg-gray-900 border-8 border-orange-500 rounded-3xl overflow-hidden hover:border-red-600 transition transform hover:scale-105 group">
+              <div className="bg-gradient-to-br from-orange-600 to-red-700 h-48 flex items-center justify-center">
+                <span className="text-6xl font-black text-white opacity-30">{p.cat}</span>
+              </div>
+              <div className="p-6 text-center">
+                <h3 className="text-3xl font-black text-white mb-2">{p.name}</h3>
+                <p className="text-5xl font-black text-yellow-400 mb-6">${p.price}</p>
+                <button
+                  onClick={addToCart.bind(null, p)}
+                  className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-6 rounded-2xl font-black text-3xl hover:scale-110 transition flex items-center justify-center gap-4"
+                >
+                  <Plus className="w-12 h-12 fly-icon" />
+                  AGREGAR
+                </button>
+              </div>
             </div>
-
-            <img
-              src={p.imagen}
-              alt={p.nombre}
-              className="w-40 h-40 object-cover rounded-lg mb-4 mt-4"
-            />
-            <h3 className="text-xl font-display text-neonOrange text-center mb-2">
-              {p.nombre}
-            </h3>
-            <p className="text-gray-300 text-sm text-center mb-2 h-10 overflow-hidden">
-              {p.descripcion}
-            </p>
-            <p className="text-neonRed font-bold text-lg mb-4">${p.precio}</p>
-
-            {/* Botones + y - */}
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => quitar(p)}
-                className="bg-gray-700 text-white px-3 py-1 rounded-lg hover:bg-gray-600"
-              >
-                -
-              </button>
-              <span className="text-white font-bold">
-                {obtenerCantidad(p.nombre)}
-              </span>
-              <button
-                onClick={() => agregar(p)}
-                className="bg-neonOrange text-black px-3 py-1 rounded-lg hover:bg-orange-400 font-bold"
-              >
-                +
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* --- CARRITO FLOTANTE --- */}
-      <Cart
-        cart={cart}
-        onSend={() => setMostrarForm(true)}
-        onClear={vaciar}
-        onContinue={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-      />
-
-      {/* --- MODAL FORMULARIO --- */}
-      {mostrarForm && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-gray-900 border-2 border-neonOrange rounded-2xl p-6 w-[90%] max-w-md shadow-[0_0_25px_#ff8c00]">
-            <h2 className="text-2xl font-display text-neonOrange mb-4 text-center">
-              🧾 Datos del Cliente
-            </h2>
-
-            <div className="flex flex-col gap-3">
-              {/* Campos del cliente */}
-              {["nombre", "telefono", "email", "direccion"].map((campo) => (
-                <input
-                  key={campo}
-                  type="text"
-                  placeholder={`${campo.charAt(0).toUpperCase() + campo.slice(1)} *`}
-                  className="p-2 rounded bg-black/60 border border-gray-700 text-white"
-                  value={cliente[campo]}
-                  onChange={(e) =>
-                    setCliente({ ...cliente, [campo]: e.target.value })
-                  }
-                />
-              ))}
-              <textarea
-                placeholder="Notas del pedido (opcional)"
-                className="p-2 rounded bg-black/60 border border-gray-700 text-white"
-                value={cliente.notas}
-                onChange={(e) =>
-                  setCliente({ ...cliente, notas: e.target.value })
-                }
-              />
-              <select
-                className="p-2 rounded bg-black/60 border border-gray-700 text-white"
-                value={cliente.metodoPago}
-                onChange={(e) =>
-                  setCliente({ ...cliente, metodoPago: e.target.value })
-                }
-              >
-                <option value="EFECTIVO">Efectivo</option>
-                <option value="POS">POS (Tarjeta Débito)</option>
-              </select>
-
-              {/* ✅ Guardar datos */}
-              <label className="flex items-center gap-2 mt-2">
-                <input
-                  type="checkbox"
-                  checked={cliente.guardar_datos}
-                  onChange={(e) =>
-                    setCliente({ ...cliente, guardar_datos: e.target.checked })
-                  }
-                />
-                <span className="text-sm text-gray-300">
-                  Guardar mis datos para futuras compras
-                </span>
-              </label>
-
-              {/* ✅ Promociones */}
-              <label className="flex items-center gap-2 mt-2">
-                <input
-                  type="checkbox"
-                  checked={cliente.suscrito_promos}
-                  onChange={(e) =>
-                    setCliente({
-                      ...cliente,
-                      suscrito_promos: e.target.checked,
-                    })
-                  }
-                />
-                <span className="text-sm text-gray-300">
-                  Deseo recibir promociones y ofertas
-                </span>
-              </label>
-            </div>
-
-            {/* --- BOTONES --- */}
-            <div className="flex justify-between mt-6">
-              <button
-                onClick={enviarPedido}
-                className="bg-green-500 text-black px-4 py-2 rounded-lg font-bold hover:bg-green-400 transition"
-              >
-                Confirmar Pedido
-              </button>
-              <button
-                onClick={() => setMostrarForm(false)}
-                className="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={() => {
-                  setMostrarForm(false);
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-500 transition"
-              >
-                Seguir Comprando
-              </button>
-            </div>
-          </div>
+          ))}
         </div>
-      )}
+      </div>
     </div>
-  );
+  )
 }
