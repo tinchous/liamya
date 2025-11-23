@@ -7,3 +7,9 @@ __pycache__/
 products_data.json
 users_data.json
 
+# Ignorar binarios del frontend
+app/frontend/src/assets/logos/
+app/frontend/src/assets/videos/
+
+# Ignorar imágenes del backend
+app/backend/data/imagenes_productos/
