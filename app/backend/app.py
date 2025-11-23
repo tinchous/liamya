@@ -28,6 +28,7 @@ PRODUCTOS_FILE = os.path.join(DATA_DIR, "productos.csv")
 PEDIDOS_FILE = os.path.join(DATA_DIR, "pedidos.csv")
 USUARIOS_FILE = os.path.join(DATA_DIR, "usuarios.csv")
 RECORD_FILE = os.path.join(DATA_DIR, "record.json")
+LOG_FILE = os.path.join(DATA_DIR, "acciones.csv")
 
 # API key de Resend (a pedido del cliente, hardcodeada)
 RESEND_API_KEY = "re_j8NHXAD2_K2ECBBacNA7DDdf7pnNqrS6rc"
@@ -39,6 +40,23 @@ RESEND_API_KEY = "re_j8NHXAD2_K2ECBBacNA7DDdf7pnNqrS6rc"
 def ensure_dir():
     """Asegura que la carpeta data exista."""
     os.makedirs(DATA_DIR, exist_ok=True)
+
+
+def registrar_accion(actor, accion):
+    """Registra una acción de ABM con fecha y empleado."""
+    ensure_dir()
+    file_exists = os.path.exists(LOG_FILE)
+    with open(LOG_FILE, "a", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=["fecha", "empleado", "accion"])
+        if not file_exists:
+            writer.writeheader()
+        writer.writerow(
+            {
+                "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "empleado": actor or "anonimo",
+                "accion": accion,
+            }
+        )
 
 
 # -------------------- PRODUCTOS -----------------------------
@@ -109,6 +127,11 @@ USUARIOS_FIELDS = [
     "suscrito_promos",
     "pedidos",
 ]
+
+
+def serializar_usuario(usuario):
+    data = {k: usuario.get(k, "") for k in USUARIOS_FIELDS if k != "password"}
+    return data
 
 
 def leer_usuarios():
@@ -465,6 +488,7 @@ def create_product():
     }
     productos.append(nuevo)
     guardar_productos(productos)
+    registrar_accion(data.get("actor"), f"Creó producto {nuevo['nombre']}")
     return jsonify({"status": "success", "producto": nuevo})
 
 
@@ -492,6 +516,7 @@ def update_product(product_id):
         return jsonify({"error": "Producto no encontrado"}), 404
 
     guardar_productos(productos)
+    registrar_accion(data.get("actor"), f"Actualizó producto {product_id}")
     return jsonify({"status": "success", "producto": actualizado})
 
 
@@ -504,6 +529,7 @@ def delete_product(product_id):
         return jsonify({"error": "Producto no encontrado"}), 404
 
     guardar_productos(nuevos)
+    registrar_accion(request.args.get("actor"), f"Eliminó producto {product_id}")
     return jsonify({"status": "success"})
 
 
@@ -536,6 +562,7 @@ def api_create_usuario():
     }
     usuarios.append(nuevo)
     guardar_usuarios(usuarios)
+    registrar_accion(data.get("actor"), f"Creó usuario {nuevo['email']}")
     return jsonify({"status": "success", "usuario": nuevo})
 
 
@@ -563,6 +590,7 @@ def api_update_usuario(user_id):
         return jsonify({"error": "Usuario no encontrado"}), 404
 
     guardar_usuarios(usuarios)
+    registrar_accion(data.get("actor"), f"Actualizó usuario {user_id}")
     return jsonify({"status": "success", "usuario": actualizado})
 
 
@@ -575,7 +603,92 @@ def api_delete_usuario(user_id):
         return jsonify({"error": "Usuario no encontrado"}), 404
 
     guardar_usuarios(nuevos)
+    registrar_accion(request.args.get("actor"), f"Eliminó usuario {user_id}")
     return jsonify({"status": "success"})
+
+
+# ============================================================
+# 🔐 AUTENTICACIÓN BÁSICA
+# ============================================================
+
+
+def usuario_admin_embebido():
+    return {
+        "id": "admin",
+        "nombre": "Administrador",
+        "email": "admin@liamya.local",
+        "telefono": "",
+        "direccion": "",
+        "rol": "ADMINISTRADOR",
+        "metodo_pago": "",
+        "suscrito_promos": "",
+        "pedidos": "",
+    }
+
+
+@app.route("/api/auth/register", methods=["POST"])
+def api_register():
+    data = request.get_json() or {}
+    email = (data.get("email") or "").lower().strip()
+    password = data.get("password") or ""
+
+    if not email or not password:
+        return jsonify({"error": "Email y contraseña son obligatorios"}), 400
+
+    usuarios = leer_usuarios()
+    if any((u.get("email") or "").lower() == email for u in usuarios):
+        return jsonify({"error": "Ya existe un usuario con ese email"}), 409
+
+    nuevo = {
+        "id": str(uuid.uuid4()),
+        "nombre": data.get("nombre", ""),
+        "telefono": data.get("telefono", ""),
+        "email": email,
+        "direccion": data.get("direccion", ""),
+        "rol": data.get("rol") or "CLIENTE",
+        "password": password,
+        "metodo_pago": data.get("metodo_pago", ""),
+        "suscrito_promos": "no",
+        "pedidos": "",
+    }
+    usuarios.append(nuevo)
+    guardar_usuarios(usuarios)
+    registrar_accion(email, "Registro de usuario")
+    return jsonify({"usuario": serializar_usuario(nuevo)})
+
+
+@app.route("/api/auth/login", methods=["POST"])
+def api_login():
+    data = request.get_json() or {}
+    email = (data.get("email") or "").lower().strip()
+    password = data.get("password") or ""
+
+    # Admin embebido
+    if email == "admin@liamya.local" and password == "admin":
+        registrar_accion("admin", "Inicio de sesión de administrador")
+        return jsonify({"usuario": usuario_admin_embebido()})
+
+    usuarios = leer_usuarios()
+    for u in usuarios:
+        condicion_email = (u.get("email") or "").lower() == email
+        condicion_password = (u.get("password") or "") == password
+        if condicion_email and condicion_password:
+            registrar_accion(email, "Inicio de sesión")
+            return jsonify({"usuario": serializar_usuario(u)})
+
+    return jsonify({"error": "Credenciales inválidas"}), 401
+
+
+@app.route("/api/auth/me/<user_id>", methods=["GET"])
+def api_me(user_id):
+    if user_id == "admin":
+        return jsonify({"usuario": usuario_admin_embebido()})
+
+    usuarios = leer_usuarios()
+    for u in usuarios:
+        if str(u.get("id")) == str(user_id):
+            return jsonify({"usuario": serializar_usuario(u)})
+    return jsonify({"error": "Usuario no encontrado"}), 404
 
 
 # ============================================================
@@ -585,7 +698,15 @@ def api_delete_usuario(user_id):
 @app.route("/api/pedidos", methods=["GET"])
 def api_get_pedidos():
     """Devuelve todos los pedidos ya parseados."""
-    return jsonify(leer_pedidos())
+    pedidos = leer_pedidos()
+    email = (request.args.get("email") or "").lower().strip()
+    if email:
+        pedidos = [
+            p
+            for p in pedidos
+            if (p.get("cliente", {}).get("email", "").lower() == email)
+        ]
+    return jsonify(pedidos)
 
 
 @app.route("/api/pedidos", methods=["POST"])
@@ -651,10 +772,30 @@ def api_create_pedido():
     rol = "USUARIO REGISTRADO" if guardar_datos else "USUARIO INVITADO"
     actualizar_usuario_desde_pedido(pedido, rol, suscrito_promos)
 
+    registrar_accion(data.get("actor"), f"Creó pedido {numero}")
+
     # Enviar mail de confirmación (si hay email)
     enviar_email_resend(pedido)
 
     return jsonify({"status": "success", "numero": numero})
+
+
+@app.route("/api/pedidos/<numero>/repetir", methods=["POST"])
+def api_repetir_pedido(numero):
+    pedidos = leer_pedidos()
+    original = next((p for p in pedidos if str(p.get("numero")) == str(numero)), None)
+    if not original:
+        return jsonify({"error": "Pedido no encontrado"}), 404
+
+    nuevo_numero = f"ORD-{int(datetime.now().timestamp()*1000)}"
+    nuevo_pedido = original.copy()
+    nuevo_pedido["numero"] = nuevo_numero
+    nuevo_pedido["fecha"] = datetime.now().strftime("%d/%m/%Y, %H:%M:%S")
+
+    guardar_pedido(nuevo_pedido)
+    registrar_accion(request.args.get("actor"), f"Repitió pedido {numero}")
+
+    return jsonify({"status": "success", "numero": nuevo_numero, "pedido": nuevo_pedido})
 
 
 # ============================================================
