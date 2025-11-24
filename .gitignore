@@ -1,9 +1,45 @@
+# --- NODE / FRONTEND ---
 node_modules/
-*.zip
-*.xlsx
-*.csv
+dist/
+build/
+.next/
+.vite/
+.vite-temp/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Editor crap
+.idea/
+.vscode/
+*.swp
+
+# --- BACKEND ---
 __pycache__/
 *.pyc
-products_data.json
-users_data.json
 
+# Ignorar imágenes pesadas del backend
+app/backend/data/imagenes_productos/
+
+# Ignorar archivos temporales
+*.tmp
+*.bak
+
+# --- FRONTEND ASSETS BINARIOS ---
+app/frontend/src/assets/logos/
+app/frontend/src/assets/videos/
+
+# --- OS FILES ---
+.DS_Store
+Thumbs.db
+
+# --- OTHER ---
+*.lock
